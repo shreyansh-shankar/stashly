@@ -3,7 +3,7 @@ from PyQt6.QtGui import QCursor, QIcon, QPainter, QColor, QPen, QBrush
 from PyQt6.QtCore import Qt, QSize, QRect, QPoint
 import sys
 
-from widgets import PlusButton
+from widgets import PlusButton, AddLinkWindow
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -15,7 +15,7 @@ class MainWindow(QWidget):
         self.plus_button = PlusButton(self)
         self.update_plus_button_position()
 
-        self.plus_button.clicked.connect(self.on_plus_clicked)
+        self.plus_button.clicked.connect(self.show_add_link_window)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -27,8 +27,12 @@ class MainWindow(QWidget):
         y = self.height() - self.plus_button.height() - margin
         self.plus_button.move(x, y)
 
-    def on_plus_clicked(self):
-        print("Plus button clicked!")
+    def show_add_link_window(self):
+        self.add_window = AddLinkWindow()
+        self.add_window.move(
+            self.geometry().center() - self.add_window.rect().center()
+        )
+        self.add_window.show()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

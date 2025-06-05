@@ -1,6 +1,69 @@
-from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QCursor, QPainter, QColor, QPen
 from PyQt6.QtCore import Qt
+
+from paths import *
+
+class AddLinkWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Add New Link")
+        self.setFixedSize(700, 400)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)  # Block main window
+
+        form_layout = QFormLayout()
+
+        self.url_input = QLineEdit()
+        self.title_input = QLineEdit()
+        self.tags_input = QLineEdit()
+        self.category_input = QLineEdit()
+
+        form_layout.addRow("URL *", self.url_input)
+        form_layout.addRow("Title", self.title_input)
+        form_layout.addRow("Tags", self.tags_input)
+        form_layout.addRow("Category", self.category_input)
+
+        self.save_button = QPushButton("Save")
+        self.save_button.clicked.connect(self.save_link)
+
+        layout = QVBoxLayout()
+        layout.addLayout(form_layout)
+        layout.addWidget(self.save_button)
+        self.setLayout(layout)
+
+    def save_link(self):
+        url = self.url_input.text().strip()
+        title = self.title_input.text().strip()
+        tags = self.tags_input.text().strip()
+        category = self.category_input.text().strip()
+
+        if url.strip() == "":
+            print("URL is required!")
+            return
+        
+        entry = {
+        "url": url,
+        "title": title,
+        "tags": tags,
+        "category": category
+        }
+
+        file_path = get_data_file_path()
+
+        # Load existing data and append
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+        except Exception:
+            data = []
+        
+        data.append(entry)
+
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+
+        print("Link saved successfully")
+        self.close()
 
 class PlusButton(QPushButton):
     def __init__(self, parent=None):
