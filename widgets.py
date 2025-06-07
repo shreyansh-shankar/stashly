@@ -1,9 +1,110 @@
 from PyQt6.QtWidgets import *
-from PyQt6.QtGui import QCursor, QPainter, QColor, QPen
+from PyQt6.QtGui import QCursor, QPainter, QColor, QPen, QPixmap, QFont
 from PyQt6.QtCore import Qt
 
 from paths import *
 from flowlayout import *
+
+class CategoryCard(QFrame):
+    def __init__(self, category_name, icon_path=None, fallback_icon_path="minimize.png"):
+        super().__init__()
+
+        self.setObjectName("CategoryCard")
+        self.setStyleSheet("""
+            QFrame#CategoryCard {
+                background-color: rgba(255, 255, 255, 30);
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 40);
+            }
+            QFrame#CategoryCard:hover {
+                background-color: rgba(255, 255, 255, 50);
+            }
+            QLabel {
+                background: transparent;
+                color: white;
+                font-size: 14px;
+            }
+        """)
+        self.setFixedSize(150, 150)  # Uniform size for all cards
+
+        # Main layout
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Icon
+        # icon_label = QLabel()
+        # pixmap = self.get_pixmap(icon_path)
+        # icon_label.setPixmap(
+        #     pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        # )
+        # icon_label.setFixedSize(64, 64)
+        # icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Icon container
+        icon_container = QWidget()
+        icon_container.setFixedSize(64, 64)
+        icon_container_layout = QVBoxLayout()
+        icon_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        icon_label = QLabel()
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Check icon_path validity; else fallback
+        pixmap = None
+        if icon_path and os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+        elif fallback_icon_path and os.path.exists(fallback_icon_path):
+            pixmap = QPixmap(fallback_icon_path)
+        else:
+            # Create a simple colored pixmap fallback (e.g., gray square)
+            pixmap = QPixmap(64, 64)
+            pixmap.fill(QColor(180, 180, 180))
+
+        icon_label.setPixmap(
+            pixmap.scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        )
+        icon_container_layout.addWidget(icon_label)
+        icon_container.setLayout(icon_container_layout)
+
+        # Category name
+        name_label = QLabel(category_name)
+        name_label.setFont(QFont("Arial", 11, QFont.Weight.Medium))
+        name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name_label.setWordWrap(True)
+        name_label.setStyleSheet("color: white;")
+
+        layout.addWidget(icon_label)
+        layout.addWidget(name_label)
+
+        self.setLayout(layout)
+        # Unified translucent card styling
+        self.setStyleSheet("""
+            QFrame#CategoryCard {
+                background-color: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 12px;
+            }
+            QFrame#CategoryCard:hover {
+                background-color: rgba(0, 122, 204, 0.3);
+                border: 1px solid #007acc;
+            }
+        """)
+    
+    def get_pixmap(self, icon_path):
+        """Returns QPixmap from icon_path, or fallback if not found."""
+        fallback_path = "minimize.png"
+        if icon_path and os.path.exists(icon_path):
+            return QPixmap(icon_path)
+        elif os.path.exists(fallback_path):
+            return QPixmap(fallback_path)
+        else:
+            # Final fallback: empty transparent pixmap
+            pixmap = QPixmap(40, 40)
+            pixmap.fill(Qt.GlobalColor.transparent)
+            return pixmap
 
 class AddLinkWindow(QWidget):
     def __init__(self):
