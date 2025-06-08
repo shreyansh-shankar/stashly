@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt, QSize, QRect, QPoint
 import sys, os, json
 from paths import *
 
-from widgets import PlusButton, AddLinkWindow, CategoryCard
+from widgets import PlusButton, AddLinkWindow, CategoryCard, CategoryLinksWindow
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -75,7 +75,12 @@ class MainWindow(QWidget):
         for i, category in enumerate(sorted(categories)):
             row, col = divmod(i, 4)
             card = CategoryCard(category)  # Can add icon support later
+            card.clicked.connect(self.open_category_links)
             self.category_grid.addWidget(card, row, col)
+
+    def open_category_links(self, category_name):
+        self.link_window = CategoryLinksWindow(category_name)
+        self.link_window.show()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

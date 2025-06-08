@@ -1,15 +1,59 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QCursor, QPainter, QColor, QPen, QPixmap, QFont
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal, QEvent
+import os, json
 
+from utils import *
 from paths import *
 from flowlayout import *
+from linkcard import *
+
+class CategoryLinksWindow(QWidget):
+    def __init__(self, category_name):
+        super().__init__()
+        self.setWindowTitle(f"Links in Category: {category_name}")
+        self.resize(1000, 600)
+
+        layout = QVBoxLayout()
+
+        title = QLabel(f"Links for category: {category_name}")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(title)
+
+        self.list_widget = QListWidget()
+        layout.addWidget(self.list_widget)
+
+        self.setLayout(layout)
+        self.load_links(category_name)
+
+    def load_links(self, category_name):
+        file_path = get_data_file_path()
+        if not os.path.exists(file_path):
+            return
+
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+
+        for link in data:
+            if link.get("category", "").strip() == category_name:
+                url = link.get("url", "")
+
+                link_card = LinkCard(url)
+
+                item = QListWidgetItem()
+                item.setSizeHint(link_card.sizeHint())
+                self.list_widget.addItem(item)
+                self.list_widget.setItemWidget(item, link_card)
 
 class CategoryCard(QFrame):
+    clicked = pyqtSignal(str)
     def __init__(self, category_name, icon_path=None, fallback_icon_path="minimize.png"):
         super().__init__()
 
+        self.category_name = category_name
         self.setObjectName("CategoryCard")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet("""
             QFrame#CategoryCard {
                 background-color: rgba(255, 255, 255, 30);
@@ -25,6 +69,10 @@ class CategoryCard(QFrame):
                 font-size: 14px;
             }
         """)
+
+        # Mouse tracking for hover and click
+        self.setMouseTracking(True)
+
         self.setFixedSize(150, 150)  # Uniform size for all cards
 
         # Main layout
@@ -33,23 +81,15 @@ class CategoryCard(QFrame):
         layout.setSpacing(8)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Icon
-        # icon_label = QLabel()
-        # pixmap = self.get_pixmap(icon_path)
-        # icon_label.setPixmap(
-        #     pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        # )
-        # icon_label.setFixedSize(64, 64)
-        # icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
         # Icon container
         icon_container = QWidget()
-        icon_container.setFixedSize(64, 64)
-        icon_container_layout = QVBoxLayout()
-        icon_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_container_layout = QVBoxLayout(icon_container)
         icon_container_layout.setContentsMargins(0, 0, 0, 0)
+        icon_container_layout.setSpacing(0)
+        icon_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         icon_label = QLabel()
+        icon_label.setFixedSize(48, 48)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Check icon_path validity; else fallback
@@ -64,7 +104,7 @@ class CategoryCard(QFrame):
             pixmap.fill(QColor(180, 180, 180))
 
         icon_label.setPixmap(
-            pixmap.scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            pixmap.scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
         )
         icon_container_layout.addWidget(icon_label)
         icon_container.setLayout(icon_container_layout)
@@ -76,7 +116,7 @@ class CategoryCard(QFrame):
         name_label.setWordWrap(True)
         name_label.setStyleSheet("color: white;")
 
-        layout.addWidget(icon_label)
+        layout.addWidget(icon_container)
         layout.addWidget(name_label)
 
         self.setLayout(layout)
@@ -92,6 +132,10 @@ class CategoryCard(QFrame):
                 border: 1px solid #007acc;
             }
         """)
+    
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self.category_name)
     
     def get_pixmap(self, icon_path):
         """Returns QPixmap from icon_path, or fallback if not found."""
@@ -203,11 +247,18 @@ class AddLinkWindow(QWidget):
             print("URL is required!")
             return
         
+        preview = extract_link_preview(url)
+
         entry = {
-        "url": url,
-        "title": title,
-        "tags": tags,
-        "category": category
+            "url": url,
+            "title": title,
+            "tags": tags,
+            "category": category,
+            "preview" : {
+                "title" : title or preview["title"],
+                "description" : preview["description"],
+                "thumbnail" : preview["thumbnail"]
+            }
         }
 
         file_path = get_data_file_path()
