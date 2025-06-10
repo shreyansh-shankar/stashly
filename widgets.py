@@ -12,7 +12,7 @@ class CategoryLinksWindow(QWidget):
     def __init__(self, category_name):
         super().__init__()
         self.setWindowTitle(f"Links in Category: {category_name}")
-        self.resize(1000, 600)
+        self.resize(1800, 900)
 
         layout = QVBoxLayout()
 
@@ -38,8 +38,9 @@ class CategoryLinksWindow(QWidget):
         for link in data:
             if link.get("category", "").strip() == category_name:
                 url = link.get("url", "")
+                tags =  link.get("tags", [])
 
-                link_card = LinkCard(url)
+                link_card = LinkCard(url, tags)
 
                 item = QListWidgetItem()
                 item.setSizeHint(link_card.sizeHint())
