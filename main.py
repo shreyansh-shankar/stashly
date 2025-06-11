@@ -49,6 +49,7 @@ class MainWindow(QWidget):
 
     def show_add_link_window(self):
         self.add_window = AddLinkWindow()
+        self.add_window.link_saved.connect(self.reload_categories)
         self.add_window.move(
             self.geometry().center() - self.add_window.rect().center()
         )
@@ -77,6 +78,16 @@ class MainWindow(QWidget):
             card = CategoryCard(category)  # Can add icon support later
             card.clicked.connect(self.open_category_links)
             self.category_grid.addWidget(card, row, col)
+    
+    def reload_categories(self):
+        # Step 1: Clear current category list
+        for i in reversed(range(self.category_grid.count())):
+            widget = self.category_grid.itemAt(i).widget()
+            if widget is not None:
+                widget.setParent(None)
+
+        # Step 2: Re-load categories from disk
+        self.load_categories()
 
     def open_category_links(self, category_name):
         self.link_window = CategoryLinksWindow(category_name)

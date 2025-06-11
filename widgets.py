@@ -152,6 +152,9 @@ class CategoryCard(QFrame):
             return pixmap
 
 class AddLinkWindow(QWidget):
+
+    link_saved = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Add New Link")
@@ -277,6 +280,7 @@ class AddLinkWindow(QWidget):
             json.dump(data, f, indent=2)
 
         print("Link saved successfully")
+        self.link_saved.emit(category)
         self.close()
 
 class PlusButton(QPushButton):
