@@ -83,6 +83,9 @@ class MainWindow(QWidget):
         self.link_window.show()
 
 if __name__ == "__main__":
+
+    get_cache_dir()
+
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

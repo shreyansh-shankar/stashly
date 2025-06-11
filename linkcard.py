@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtGui import QPixmap, QDesktopServices, QImage, QCursor, QPainter, QPainterPath
 from PyQt6.QtCore import Qt, QUrl, QThreadPool
 import requests
-from utils import extract_link_preview
+from utils import *
 from preview_worker import *
 
 class LinkCard(QWidget):
@@ -115,61 +115,46 @@ class LinkCard(QWidget):
     def set_preview_data(self, preview):
         self.title_label.setText(f"<b>{preview.get('title', self.url)}</b>")
         self.desc_label.setText(preview.get("description", ""))
-        thumbnail_url = preview.get("thumbnail", "")
-        favicon_url = preview.get("favicon", "")
 
-        headers = {"User-Agent": "Mozilla/5.0"}
+        self.thumbnail_label.setText("Loading...")
+        self.favicon_label.clear()
 
-        # 🌄 Load Thumbnail with Rounded Corners
-        if thumbnail_url:
-            try:
-                response = requests.get(thumbnail_url, headers=headers, timeout=5)
-                response.raise_for_status()
+        # === Load Images from Disk in Background Thread ===
+        cache_folder = get_cache_folder_for_url(self.url)
+        image_worker = ImageLoaderWorker(cache_folder)
+        image_worker.signals.finished.connect(self.set_images_from_cache)
+        LinkCard.thread_pool.start(image_worker)
+    
+    def set_images_from_cache(self, thumbnail_img, favicon_img):
+        # Handle thumbnail
+        if thumbnail_img and not thumbnail_img.isNull():
+            # Resize and apply rounded corners
+            image = thumbnail_img.scaled(160, 100, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                                        Qt.TransformationMode.SmoothTransformation)
 
-                image = QImage()
-                image.loadFromData(response.content)
+            rounded_pixmap = QPixmap(image.size())
+            rounded_pixmap.fill(Qt.GlobalColor.transparent)
 
-                # Resize image first
-                image = image.scaled(160, 100, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-                                    Qt.TransformationMode.SmoothTransformation)
+            painter = QPainter(rounded_pixmap)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-                # Create a rounded pixmap
-                rounded_pixmap = QPixmap(image.size())
-                rounded_pixmap.fill(Qt.GlobalColor.transparent)
+            path = QPainterPath()
+            radius = 12
+            path.addRoundedRect(0, 0, image.width(), image.height(), radius, radius)
+            painter.setClipPath(path)
+            painter.drawPixmap(0, 0, QPixmap.fromImage(image))
+            painter.end()
 
-                painter = QPainter(rounded_pixmap)
-                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-                path = QPainterPath()
-                radius = 12  # Adjust corner radius here
-                path.addRoundedRect(0, 0, image.width(), image.height(), radius, radius)
-
-                painter.setClipPath(path)
-                painter.drawPixmap(0, 0, QPixmap.fromImage(image))
-                painter.end()
-
-                self.thumbnail_label.setPixmap(rounded_pixmap)
-
-            except Exception as e:
-                print("Thumbnail load failed:", e)
-                self.thumbnail_label.setText("No Image")
+            self.thumbnail_label.setPixmap(rounded_pixmap)
         else:
             self.thumbnail_label.setText("No Image")
 
-
-        # 🌐 Load Favicon
-        if favicon_url:
-            try:
-                response = requests.get(favicon_url, headers=headers, timeout=5)
-                response.raise_for_status()
-
-                image = QImage()
-                image.loadFromData(response.content)
-                pixmap = QPixmap(image).scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio,
-                                            Qt.TransformationMode.SmoothTransformation)
-                self.favicon_label.setPixmap(pixmap)
-            except Exception as e:
-                print("Favicon load failed:", e)
-                self.favicon_label.clear()
+        # Handle favicon
+        if favicon_img and not favicon_img.isNull():
+            pixmap = QPixmap(favicon_img).scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio,
+                                                Qt.TransformationMode.SmoothTransformation)
+            self.favicon_label.setPixmap(pixmap)
         else:
             self.favicon_label.clear()
+
+
