@@ -52,10 +52,15 @@ class LinkCard(QWidget):
         title_row.addWidget(self.open_button)
 
         # === Tags Row ===
+        self.tags_widget = QWidget()
         self.tags_layout = QHBoxLayout()
         self.tags_layout.setSpacing(6)
+        self.tags_layout.setContentsMargins(0, 0, 0, 0)
+        self.tags_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
         for tag in self.tags:
             tag_label = QLabel(tag)
+            tag_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
             tag_label.setStyleSheet("""
                 color: #020202;
                 background-color: #f0f0f0;
@@ -65,7 +70,7 @@ class LinkCard(QWidget):
                 margin: 4px;
             """)
             self.tags_layout.addWidget(tag_label)
-        self.tags_layout.addStretch()
+        self.tags_widget.setLayout(self.tags_layout)
 
         # === Description ===
         self.desc_label = QLabel("Fetching preview...")
@@ -87,22 +92,22 @@ class LinkCard(QWidget):
         content_inner_layout.addWidget(self.thumbnail_label)
         content_inner_layout.addWidget(self.desc_label)
 
-        content_frame = QFrame()
-        content_frame.setStyleSheet("""
+        self.content_frame = QFrame()
+        self.content_frame.setStyleSheet("""
             QFrame {
                 border: 1px solid #d0d0d0;
                 border-radius: 6px;
             }
         """)
-        content_frame.setLayout(content_inner_layout)
+        self.content_frame.setLayout(content_inner_layout)
 
         # === Final Layout ===
         main_layout = QVBoxLayout()
         main_layout.setSpacing(6)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.addLayout(title_row)
-        main_layout.addLayout(self.tags_layout)
-        main_layout.addWidget(content_frame)
+        main_layout.addWidget(self.tags_widget)
+        main_layout.addWidget(self.content_frame)
 
         self.setLayout(main_layout)
         self.load_preview()
@@ -114,7 +119,13 @@ class LinkCard(QWidget):
 
     def set_preview_data(self, preview):
         self.title_label.setText(f"<b>{preview.get('title', self.url)}</b>")
-        self.desc_label.setText(preview.get("description", ""))
+        
+        description = preview.get("description", "")
+        if description:
+            self.desc_label.setText(description)
+            self.desc_label.show()
+        else:
+            self.desc_label.hide()
 
         self.thumbnail_label.setText("Loading...")
         self.favicon_label.clear()
@@ -144,10 +155,11 @@ class LinkCard(QWidget):
             painter.setClipPath(path)
             painter.drawPixmap(0, 0, QPixmap.fromImage(image))
             painter.end()
-
+            
             self.thumbnail_label.setPixmap(rounded_pixmap)
+            self.thumbnail_label.show()
         else:
-            self.thumbnail_label.setText("No Image")
+            self.thumbnail_label.hide()
 
         # Handle favicon
         if favicon_img and not favicon_img.isNull():
@@ -156,5 +168,9 @@ class LinkCard(QWidget):
             self.favicon_label.setPixmap(pixmap)
         else:
             self.favicon_label.clear()
-
-
+        
+        # Final cleanup: if both are hidden, also hide the content_frame (optional)
+        if self.thumbnail_label.isHidden() and self.desc_label.isHidden():
+            self.content_frame.hide()  # This hides the whole content_frame
+        else:
+            self.content_frame.show()
