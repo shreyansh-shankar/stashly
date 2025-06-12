@@ -69,7 +69,9 @@ def extract_link_preview(url):
         print("Failed to save preview cache:", e)
 
     return preview
-    
+
+
+
 def get_cache_folder_for_url(url):
     hashed = hashlib.md5(url.encode()).hexdigest()
     base_cache = get_cache_dir()  # like ~/.stashly/cache

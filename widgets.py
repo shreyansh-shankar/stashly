@@ -49,6 +49,8 @@ class CategoryLinksWindow(QWidget):
 
 class CategoryCard(QFrame):
     clicked = pyqtSignal(str)
+    rightclicked = pyqtSignal(str)
+
     def __init__(self, category_name, icon_path=None, fallback_icon_path="minimize.png"):
         super().__init__()
 
@@ -93,9 +95,14 @@ class CategoryCard(QFrame):
         icon_label.setFixedSize(48, 48)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        icon_mapping = load_icon_mapping()
+        mapped_icon_path = icon_mapping.get(category_name)
+
         # Check icon_path validity; else fallback
         pixmap = None
-        if icon_path and os.path.exists(icon_path):
+        if mapped_icon_path and os.path.exists(mapped_icon_path):
+            pixmap = QPixmap(mapped_icon_path)
+        elif icon_path and os.path.exists(icon_path):
             pixmap = QPixmap(icon_path)
         elif fallback_icon_path and os.path.exists(fallback_icon_path):
             pixmap = QPixmap(fallback_icon_path)
@@ -137,6 +144,8 @@ class CategoryCard(QFrame):
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.category_name)
+        if event.button() == Qt.MouseButton.RightButton:
+            self.rightclicked.emit(self.category_name)
     
     def get_pixmap(self, icon_path):
         """Returns QPixmap from icon_path, or fallback if not found."""
