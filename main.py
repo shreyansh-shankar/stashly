@@ -3,6 +3,7 @@ from PyQt6.QtGui import QCursor, QIcon, QPainter, QColor, QPen, QBrush, QAction
 from PyQt6.QtCore import Qt, QSize, QRect, QPoint
 import sys, os, json
 from paths import *
+from utils import get_cache_folder_for_url
 
 from widgets import PlusButton, AddLinkWindow, CategoryCard, CategoryLinksWindow
 
@@ -166,7 +167,6 @@ class MainWindow(QWidget):
             f"Are you sure you want to delete '{category_name}'?\nAll links under this category will be removed.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         
-
         if confirm != QMessageBox.StandardButton.Yes:
             return
         
@@ -176,8 +176,20 @@ class MainWindow(QWidget):
             try:
                 with open(file_path, 'r') as f:
                     data = json.load(f)
-
+                
+                # Get URLs of links to be deleted
+                links_to_delete = [entry for entry in data if entry.get("category") == category_name]
                 new_data = [entry for entry in data if entry.get("category") != category_name]
+
+                # Delete cache for each URL
+                for link in links_to_delete:
+                    url = link.get("url", "")
+                    cache_folder = get_cache_folder_for_url(url)
+                    if os.path.exists(cache_folder):
+                        try:
+                            shutil.rmtree(cache_folder)
+                        except Exception as e:
+                            print(f"Warning: Failed to delete cache for {url}: {e}")
 
                 with open(file_path, 'w') as f:
                     json.dump(new_data, f, indent=2)

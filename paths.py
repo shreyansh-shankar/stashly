@@ -3,8 +3,6 @@ import json
 import platform
 import shutil
 
-
-
 def get_base_dir():
     if platform.system() == "Windows":
         base_dir = os.path.join(os.environ["APPDATA"], "Stashly")
