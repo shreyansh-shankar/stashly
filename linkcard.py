@@ -1,15 +1,22 @@
 from PyQt6.QtWidgets import *
-from PyQt6.QtGui import QPixmap, QDesktopServices, QImage, QCursor, QPainter, QPainterPath
+from PyQt6.QtGui import QPixmap, QDesktopServices, QImage, QCursor, QPainter, QPainterPath, QAction
 from PyQt6.QtCore import Qt, QUrl, QThreadPool
 import requests
 from utils import *
+from paths import get_data_file_path
 from preview_worker import *
 
 class LinkCard(QWidget):
     thread_pool = QThreadPool.globalInstance()
+    delete_requested = pyqtSignal(str)
 
     def __init__(self, url, tags=None):
+
         super().__init__()
+        
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+
         self.url = url
         self.tags = tags or []
         self.preview_data = None
@@ -111,6 +118,85 @@ class LinkCard(QWidget):
 
         self.setLayout(main_layout)
         self.load_preview()
+
+    def show_context_menu(self, position):
+        menu = QMenu(self)
+
+        modify_action = QAction("Modify Tags", self)
+        modify_action.triggered.connect(self.modify_tags)
+
+        delete_action = QAction("Delete Link", self)
+        delete_action.triggered.connect(self.delete_link)
+
+        menu.addAction(modify_action)
+        menu.addSeparator()
+        menu.addAction(delete_action)
+
+        menu.exec(self.mapToGlobal(position))
+
+    def modify_tags(self):
+        current_tags = ", ".join(self.tags)
+        new_tags, ok = QInputDialog.getText(self, "Modify Tags", "Enter new tags :", text=current_tags)
+        if not ok:
+            return
+        
+        self.tags = [tag.strip() for tag in new_tags.split(",") if tag.strip()]
+
+        # Refresh tag labels
+        while self.tags_layout.count():
+            widget = self.tags_layout.takeAt(0).widget()
+            if widget:
+                widget.deleteLater()
+        for tag in self.tags:
+            tag_label = QLabel(tag)
+            tag_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+            tag_label.setStyleSheet("""
+                color: #020202;
+                background-color: #f0f0f0;
+                border-radius: 8px;
+                padding: 4px 8px;
+                font-size: 20px;
+                margin: 4px;
+            """)
+            self.tags_layout.addWidget(tag_label)
+        
+        # Persist changes into the files
+        try:
+            file_path = get_data_file_path()
+            if not os.path.exists(file_path):
+                return
+
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+
+            # Find and update the matching link by URL
+            for entry in data:
+                if entry.get("url") == self.url:
+                    entry["tags"] = self.tags
+                    break
+
+            # Save the updated data
+            with open(file_path, 'w') as f:
+                json.dump(data, f, indent=4)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to update tags:\n{str(e)}")
+
+
+    def delete_link(self):
+        confirm = QMessageBox.question(self, "Delete Link",
+        f"Are you sure you want to delete this link?\n{self.url}",
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if confirm == QMessageBox.StandardButton.Yes:
+            try:
+                cache_folder = get_cache_folder_for_url(self.url)
+                if os.path.exists(cache_folder):
+                    import shutil
+                    shutil.rmtree(cache_folder)
+            except Exception as e:
+                QMessageBox.warning(self, "Cache Deletion Failed", f"Failed to delete cached data:\n{str(e)}")
+            
+            self.delete_requested.emit(self.url)
 
     def load_preview(self):
         worker = PreviewWorker(self.url)

@@ -47,6 +47,24 @@ class CategoryLinksWindow(QWidget):
                 self.list_widget.addItem(item)
                 self.list_widget.setItemWidget(item, link_card)
 
+                link_card.delete_requested.connect(lambda url, item=item: self.remove_link_card(url, item))
+    
+    def remove_link_card(self, url, item):
+        # Remove the item from the QListWidget
+        row = self.list_widget.row(item)
+        self.list_widget.takeItem(row)
+
+        # Remove the link from the JSON data
+        file_path = get_data_file_path()
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                data = json.load(f)
+
+            data = [entry for entry in data if entry.get("url") != url]
+
+            with open(file_path, "w") as f:
+                json.dump(data, f, indent=2)
+
 class CategoryCard(QFrame):
     clicked = pyqtSignal(str)
     rightclicked = pyqtSignal(str)
